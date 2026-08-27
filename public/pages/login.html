@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>THE CLUSTER - Login</title>
+  <link rel="stylesheet" href="/css/style.css"/>
+</head>
+<body>
+<div class="login-page">
+  <div class="login-box">
+    <div class="login-logo">
+      <h1>🏋️ THE CLUSTER</h1>
+      <p>Gyms Under One System</p>
+    </div>
+
+    <div id="alert-login" class="alert"></div>
+
+    <div class="form-group">
+      <label>Username</label>
+      <input type="text" id="uname" class="form-control" placeholder="Enter username" autocomplete="username"/>
+    </div>
+    <div class="form-group">
+      <label>Password</label>
+      <input type="password" id="pwd" class="form-control" placeholder="Enter password" autocomplete="current-password"/>
+    </div>
+    <button class="btn btn-primary" style="width:100%;justify-content:center;" onclick="doLogin()">
+      🔐 Sign In
+    </button>
+
+    <p style="text-align:center;margin-top:20px;font-size:0.8rem;color:var(--text-muted);">
+      First time? <a href="#" style="color:var(--primary);" onclick="showRegister()">Create admin account</a>
+    </p>
+
+    <div id="register-section" style="display:none;margin-top:20px;padding-top:20px;border-top:1px solid var(--border);">
+      <div class="form-group">
+        <label>New Username</label>
+        <input type="text" id="reg-uname" class="form-control" placeholder="Choose username"/>
+      </div>
+      <div class="form-group">
+        <label>New Password</label>
+        <input type="password" id="reg-pwd" class="form-control" placeholder="Choose password"/>
+      </div>
+      <button class="btn btn-success" style="width:100%;justify-content:center;" onclick="doRegister()">
+        ✅ Create Account
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+async function doLogin() {
+  const uname = document.getElementById('uname').value.trim();
+  const pwd   = document.getElementById('pwd').value;
+  if (!uname || !pwd) return showMsg('Please enter username and password', 'error');
+
+  const res = await fetch('/api/auth/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ uname, pwd })
+  });
+  const data = await res.json();
+  if (data.success) window.location.href = '/dashboard';
+  else showMsg(data.message || 'Login failed', 'error');
+}
+
+async function doRegister() {
+  const uname = document.getElementById('reg-uname').value.trim();
+  const pwd   = document.getElementById('reg-pwd').value;
+  if (!uname || !pwd) return showMsg('Please fill all fields', 'error');
+
+  const res = await fetch('/api/auth/register', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ uname, pwd })
+  });
+  const data = await res.json();
+  if (data.success) showMsg('Account created! You can now login.', 'success');
+  else showMsg(data.message || 'Registration failed', 'error');
+}
+
+function showRegister() {
+  document.getElementById('register-section').style.display = 'block';
+}
+
+function showMsg(msg, type) {
+  const el = document.getElementById('alert-login');
+  el.className = `alert alert-${type} show`;
+  el.textContent = msg;
+  setTimeout(() => el.classList.remove('show'), 3500);
+}
+
+// Enter key
+document.addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+</script>
+</body>
+</html>

@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Payments - THE CLUSTER</title>
+  <link rel="stylesheet" href="/css/style.css"/>
+</head>
+<body>
+<div id="sidebar-mount"></div>
+<div class="main">
+  <div class="topbar">
+    <h1>💳 Payments</h1>
+    <div class="user-info">Welcome, <span id="username-display">Admin</span></div>
+  </div>
+  <div class="content">
+    <div id="alert-main" class="alert"></div>
+    <div class="toolbar">
+      <input class="search-box" id="pay-search" placeholder="🔍 Search payments..."/>
+      <button class="btn btn-primary" onclick="openModal('pay-modal')">+ Add Payment</button>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <h3>All Payments</h3>
+        <span id="total-label" style="color:var(--success);font-weight:700;font-size:0.95rem"></span>
+      </div>
+      <div class="table-wrap">
+        <table id="pay-table">
+          <thead><tr><th>Pay ID</th><th>Gym</th><th>Amount</th><th>Actions</th></tr></thead>
+          <tbody><tr><td colspan="4" style="text-align:center;color:var(--text-muted)">Loading...</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal -->
+<div class="modal-overlay" id="pay-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="modal-title">Add Payment</h3>
+      <button class="modal-close" onclick="resetAndClose()">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="edit-id"/>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Pay ID *</label>
+          <input type="text" id="pay_id" class="form-control" placeholder="e.g. P6"/>
+        </div>
+        <div class="form-group">
+          <label>Gym ID</label>
+          <input type="text" id="gym_id" class="form-control" placeholder="e.g. G1"/>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Amount (₹) *</label>
+        <input type="number" id="amount" class="form-control" placeholder="e.g. 5000" min="0"/>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="resetAndClose()">Cancel</button>
+      <button class="btn btn-primary" onclick="savePayment()">💾 Save</button>
+    </div>
+  </div>
+</div>
+
+<script src="/js/sidebar.js"></script>
+<script src="/js/common.js"></script>
+<script>
+document.getElementById('sidebar-mount').innerHTML = getSidebar('payments');
+checkAuth();
+filterTable('pay-search', 'pay-table');
+
+async function loadPayments() {
+  const payments = await api('/api/payments');
+  const total = payments.reduce((sum, p) => sum + Number(p.amount), 0);
+  document.getElementById('total-label').textContent = `Total: ${fmtCurrency(total)}`;
+  const tbody = document.querySelector('#pay-table tbody');
+  tbody.innerHTML = payments.length
+    ? payments.map(p => `
+      <tr>
+        <td><span class="badge badge-yellow">${p.pay_id}</span></td>
+        <td>${p.gym_name ? `<span class="badge badge-red">${p.gym_id}</span> ${p.gym_name}` : (p.gym_id || '-')}</td>
+        <td style="color:var(--success);font-weight:700">${fmtCurrency(p.amount)}</td>
+        <td>
+          <button class="btn btn-secondary btn-sm" onclick='editPayment(${JSON.stringify(p)})'>✏️</button>
+          <button class="btn btn-danger btn-sm" onclick="deletePayment('${p.pay_id}')">🗑️</button>
+        </td>
+      </tr>`).join('')
+    : '<tr><td colspan="4" style="text-align:center;color:var(--text-muted)">No payments found</td></tr>';
+}
+
+function editPayment(p) {
+  document.getElementById('modal-title').textContent = 'Edit Payment';
+  document.getElementById('edit-id').value = p.pay_id;
+  document.getElementById('pay_id').value = p.pay_id;
+  document.getElementById('pay_id').disabled = true;
+  document.getElementById('gym_id').value = p.gym_id || '';
+  document.getElementById('amount').value = p.amount;
+  openModal('pay-modal');
+}
+
+async function savePayment() {
+  const editId = document.getElementById('edit-id').value;
+  const body = {
+    pay_id: document.getElementById('pay_id').value.trim(),
+    gym_id: document.getElementById('gym_id').value.trim(),
+    amount: document.getElementById('amount').value
+  };
+  if (!body.pay_id || !body.amount) return showAlert('alert-main','Pay ID and Amount required','error');
+  const r = editId
+    ? await api(`/api/payments/${editId}`, 'PUT', body)
+    : await api('/api/payments', 'POST', body);
+  if (r.success) { showAlert('alert-main', r.message, 'success'); resetAndClose(); loadPayments(); }
+  else showAlert('alert-main', r.error || 'Error', 'error');
+}
+
+async function deletePayment(id) {
+  if (!confirmDelete(`Delete payment ${id}?`)) return;
+  const r = await api(`/api/payments/${id}`, 'DELETE');
+  if (r.success) { showAlert('alert-main', r.message, 'success'); loadPayments(); }
+  else showAlert('alert-main', r.error, 'error');
+}
+
+function resetAndClose() {
+  ['pay_id','gym_id','amount'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('pay_id').disabled = false;
+  document.getElementById('edit-id').value = '';
+  document.getElementById('modal-title').textContent = 'Add Payment';
+  closeModal('pay-modal');
+}
+
+loadPayments();
+</script>
+</body>
+</html>

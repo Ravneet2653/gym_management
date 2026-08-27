@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Members - THE CLUSTER</title>
+  <link rel="stylesheet" href="/css/style.css"/>
+</head>
+<body>
+<div id="sidebar-mount"></div>
+<div class="main">
+  <div class="topbar">
+    <h1>👥 Members</h1>
+    <div class="user-info">Welcome, <span id="username-display">Admin</span></div>
+  </div>
+  <div class="content">
+    <div id="alert-main" class="alert"></div>
+    <div class="toolbar">
+      <input class="search-box" id="mem-search" placeholder="🔍 Search members..."/>
+      <button class="btn btn-primary" onclick="openAddModal()">+ Add Member</button>
+    </div>
+
+    <div class="card">
+      <div class="card-header"><h3>All Members</h3><span id="mem-count" style="color:var(--text-muted);font-size:0.85rem"></span></div>
+      <div class="table-wrap">
+        <table id="mem-table">
+          <thead>
+            <tr>
+              <th>ID</th><th>Name</th><th>DOB</th><th>Age</th>
+              <th>Trainer</th><th>Pay ID</th><th>Mobile</th><th>Actions</th>
+            </tr>
+          </thead>
+          <tbody><tr><td colspan="8" style="text-align:center;color:var(--text-muted)">Loading...</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Add/Edit Modal -->
+<div class="modal-overlay" id="mem-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="modal-title">Add New Member</h3>
+      <button class="modal-close" onclick="resetAndClose()">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="edit-id"/>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Member ID *</label>
+          <input type="text" id="mem_id" class="form-control" placeholder="e.g. M5"/>
+        </div>
+        <div class="form-group">
+          <label>Date of Birth *</label>
+          <input type="date" id="dob" class="form-control"/>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>First Name *</label>
+          <input type="text" id="mem_first_name" class="form-control" placeholder="First name"/>
+        </div>
+        <div class="form-group">
+          <label>Last Name *</label>
+          <input type="text" id="mem_last_name" class="form-control" placeholder="Last name"/>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Payment ID</label>
+          <input type="text" id="pay_id" class="form-control" placeholder="e.g. P1"/>
+        </div>
+        <div class="form-group">
+          <label>Trainer ID</label>
+          <input type="text" id="trainer_id" class="form-control" placeholder="e.g. T1"/>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Mobile Numbers (comma separated)</label>
+        <input type="text" id="mobile_numbers" class="form-control" placeholder="e.g. 9876543210, 9123456789"/>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="resetAndClose()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveMember()">💾 Save Member</button>
+    </div>
+  </div>
+</div>
+
+<!-- Workouts Modal -->
+<div class="modal-overlay" id="workout-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="wm-title">Member Workouts</h3>
+      <button class="modal-close" onclick="closeModal('workout-modal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div id="workout-list"></div>
+    </div>
+  </div>
+</div>
+
+<script src="/js/sidebar.js"></script>
+<script src="/js/common.js"></script>
+<script>
+document.getElementById('sidebar-mount').innerHTML = getSidebar('members');
+checkAuth();
+filterTable('mem-search', 'mem-table');
+
+async function loadMembers() {
+  const members = await api('/api/members');
+  document.getElementById('mem-count').textContent = `${members.length} members`;
+  const tbody = document.querySelector('#mem-table tbody');
+  if (!members.length) {
+    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--text-muted)">No members found</td></tr>';
+    return;
+  }
+  tbody.innerHTML = members.map(m => `
+    <tr>
+      <td><span class="badge badge-blue">${m.mem_id}</span></td>
+      <td><strong>${m.mem_first_name} ${m.mem_last_name}</strong></td>
+      <td>${fmtDate(m.dob)}</td>
+      <td><span class="badge badge-yellow">${m.age || '-'}</span></td>
+      <td>${m.trainer_name || '<span style="color:var(--text-muted)">Unassigned</span>'}</td>
+      <td>${m.pay_id || '-'}</td>
+      <td style="font-size:0.8rem">${m.mobile_numbers || '-'}</td>
+      <td>
+        <button class="btn btn-success btn-sm" onclick="viewWorkouts('${m.mem_id}','${m.mem_first_name}')">🏃</button>
+        <button class="btn btn-secondary btn-sm" onclick='editMember(${JSON.stringify(m)})'>✏️</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteMember('${m.mem_id}')">🗑️</button>
+      </td>
+    </tr>
+  `).join('');
+}
+
+function openAddModal() {
+  document.getElementById('modal-title').textContent = 'Add New Member';
+  document.getElementById('edit-id').value = '';
+  document.getElementById('mem_id').disabled = false;
+  openModal('mem-modal');
+}
+
+function editMember(m) {
+  document.getElementById('modal-title').textContent = 'Edit Member';
+  document.getElementById('edit-id').value = m.mem_id;
+  document.getElementById('mem_id').value = m.mem_id;
+  document.getElementById('mem_id').disabled = true;
+  document.getElementById('dob').value = m.dob ? m.dob.substring(0,10) : '';
+  document.getElementById('mem_first_name').value = m.mem_first_name;
+  document.getElementById('mem_last_name').value = m.mem_last_name;
+  document.getElementById('pay_id').value = m.pay_id || '';
+  document.getElementById('trainer_id').value = m.trainer_id || '';
+  document.getElementById('mobile_numbers').value = m.mobile_numbers || '';
+  openModal('mem-modal');
+}
+
+async function saveMember() {
+  const editId = document.getElementById('edit-id').value;
+  const mobiles = document.getElementById('mobile_numbers').value
+    .split(',').map(s => s.trim()).filter(Boolean);
+  const body = {
+    mem_id:         document.getElementById('mem_id').value.trim(),
+    dob:            document.getElementById('dob').value,
+    mem_first_name: document.getElementById('mem_first_name').value.trim(),
+    mem_last_name:  document.getElementById('mem_last_name').value.trim(),
+    pay_id:         document.getElementById('pay_id').value.trim(),
+    trainer_id:     document.getElementById('trainer_id').value.trim(),
+    mobile_numbers: mobiles
+  };
+  if (!body.mem_id || !body.dob || !body.mem_first_name) {
+    return showAlert('alert-main', 'Member ID, DOB and Name are required', 'error');
+  }
+  const result = editId
+    ? await api(`/api/members/${editId}`, 'PUT', body)
+    : await api('/api/members', 'POST', body);
+  if (result.success) {
+    showAlert('alert-main', result.message, 'success');
+    resetAndClose();
+    loadMembers();
+  } else {
+    showAlert('alert-main', result.error || 'Error saving member', 'error');
+  }
+}
+
+async function deleteMember(id) {
+  if (!confirmDelete(`Delete member ${id}?`)) return;
+  const r = await api(`/api/members/${id}`, 'DELETE');
+  if (r.success) { showAlert('alert-main', r.message, 'success'); loadMembers(); }
+  else showAlert('alert-main', r.error, 'error');
+}
+
+async function viewWorkouts(memId, name) {
+  document.getElementById('wm-title').textContent = `Workouts — ${name}`;
+  document.getElementById('workout-list').innerHTML = '<p style="color:var(--text-muted)">Loading...</p>';
+  openModal('workout-modal');
+  const data = await api(`/api/members/${memId}/workouts`);
+  document.getElementById('workout-list').innerHTML = `
+    <p style="margin-bottom:16px;color:var(--text-muted)">Total enrolled: <strong style="color:var(--primary)">${data.total}</strong></p>
+    ${data.workouts.length
+      ? data.workouts.map(w => `
+        <div style="padding:12px;background:var(--bg3);border-radius:8px;margin-bottom:10px;">
+          <strong>${w.workout_name}</strong>
+          <div style="font-size:0.82rem;color:var(--text-muted);margin-top:4px;">
+            Schedule: ${w.workout_schedule || '-'} &nbsp;|&nbsp;
+            Duration: ${w.workout_repetition ? w.workout_repetition+' months' : '-'} &nbsp;|&nbsp;
+            Enrolled: ${fmtDate(w.date)}
+          </div>
+        </div>`).join('')
+      : '<p style="color:var(--text-muted)">Not enrolled in any workout yet.</p>'}
+  `;
+}
+
+function resetAndClose() {
+  ['mem_id','dob','mem_first_name','mem_last_name','pay_id','trainer_id','mobile_numbers'].forEach(id => {
+    document.getElementById(id).value = '';
+  });
+  document.getElementById('mem_id').disabled = false;
+  document.getElementById('edit-id').value = '';
+  closeModal('mem-modal');
+}
+
+loadMembers();
+</script>
+</body>
+</html>

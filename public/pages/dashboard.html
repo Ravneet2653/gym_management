@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Dashboard - THE CLUSTER</title>
+  <link rel="stylesheet" href="/css/style.css"/>
+</head>
+<body>
+<div id="sidebar-mount"></div>
+
+<div class="main">
+  <div class="topbar">
+    <h1>📊 Dashboard</h1>
+    <div class="user-info">Welcome, <span id="username-display">Admin</span></div>
+  </div>
+
+  <div class="content">
+    <div class="stats-grid" id="stats-grid">
+      <div class="stat-card"><div class="stat-icon">🏢</div><div class="stat-info"><h3 id="s-gyms">-</h3><p>Total Gyms</p></div></div>
+      <div class="stat-card"><div class="stat-icon">👥</div><div class="stat-info"><h3 id="s-members">-</h3><p>Members</p></div></div>
+      <div class="stat-card"><div class="stat-icon">💪</div><div class="stat-info"><h3 id="s-trainers">-</h3><p>Trainers</p></div></div>
+      <div class="stat-card"><div class="stat-icon">🏃</div><div class="stat-info"><h3 id="s-workouts">-</h3><p>Workouts</p></div></div>
+      <div class="stat-card"><div class="stat-icon">💰</div><div class="stat-info"><h3 id="s-revenue">-</h3><p>Total Revenue</p></div></div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;flex-wrap:wrap;">
+      <div class="card">
+        <div class="card-header"><h3>💪 Members & Their Trainers</h3></div>
+        <div class="card-body">
+          <div class="table-wrap">
+            <table id="tbl-member-trainer">
+              <thead><tr><th>Member ID</th><th>Member Name</th><th>Trainer ID</th><th>Trainer Name</th></tr></thead>
+              <tbody><tr><td colspan="4" style="text-align:center;color:var(--text-muted)">Loading...</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header"><h3>🏢 Revenue Per Gym</h3></div>
+        <div class="card-body">
+          <div class="table-wrap">
+            <table id="tbl-gym-revenue">
+              <thead><tr><th>Gym ID</th><th>Gym Name</th><th>Total Revenue</th></tr></thead>
+              <tbody><tr><td colspan="3" style="text-align:center;color:var(--text-muted)">Loading...</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:0">
+      <div class="card-header"><h3>🏃 Members Without Workout Enrollment</h3></div>
+      <div class="card-body">
+        <div class="table-wrap">
+          <table id="tbl-no-workout">
+            <thead><tr><th>Member ID</th><th>First Name</th><th>Last Name</th></tr></thead>
+            <tbody><tr><td colspan="3" style="text-align:center;color:var(--text-muted)">Loading...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="/js/sidebar.js"></script>
+<script src="/js/common.js"></script>
+<script>
+document.getElementById('sidebar-mount').innerHTML = getSidebar('dashboard');
+
+checkAuth();
+
+async function loadDashboard() {
+  const stats = await api('/api/reports/stats');
+  document.getElementById('s-gyms').textContent    = stats.gyms;
+  document.getElementById('s-members').textContent  = stats.members;
+  document.getElementById('s-trainers').textContent = stats.trainers;
+  document.getElementById('s-workouts').textContent = stats.workouts;
+  document.getElementById('s-revenue').textContent  = fmtCurrency(stats.revenue);
+
+  // Member-Trainer table
+  const mt = await api('/api/reports/members-trainers');
+  document.querySelector('#tbl-member-trainer tbody').innerHTML = mt.length
+    ? mt.map(r => `<tr>
+        <td><span class="badge badge-blue">${r.mem_id}</span></td>
+        <td>${r.mem_first_name} ${r.mem_last_name}</td>
+        <td>${r.trainer_id || '-'}</td>
+        <td>${r.trainer_first_name ? r.trainer_first_name+' '+r.trainer_last_name : '-'}</td>
+      </tr>`).join('')
+    : '<tr><td colspan="4" style="text-align:center;color:var(--text-muted)">No data</td></tr>';
+
+  // Gym revenue table
+  const gr = await api('/api/reports/gym-totals');
+  document.querySelector('#tbl-gym-revenue tbody').innerHTML = gr.length
+    ? gr.map(r => `<tr>
+        <td><span class="badge badge-red">${r.gym_id}</span></td>
+        <td>${r.gym_name}</td>
+        <td style="color:var(--success);font-weight:700">${fmtCurrency(r.total_paid || 0)}</td>
+      </tr>`).join('')
+    : '<tr><td colspan="3" style="text-align:center;color:var(--text-muted)">No data</td></tr>';
+
+  // Members without workout
+  const nw = await api('/api/reports/unenrolled-members');
+  document.querySelector('#tbl-no-workout tbody').innerHTML = nw.length
+    ? nw.map(r => `<tr>
+        <td><span class="badge badge-yellow">${r.mem_id}</span></td>
+        <td>${r.mem_first_name}</td>
+        <td>${r.mem_last_name}</td>
+      </tr>`).join('')
+    : '<tr><td colspan="3" style="text-align:center;color:var(--success)">✅ All members are enrolled!</td></tr>';
+}
+
+loadDashboard();
+</script>
+</body>
+</html>

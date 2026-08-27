@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Trainers - THE CLUSTER</title>
+  <link rel="stylesheet" href="/css/style.css"/>
+</head>
+<body>
+<div id="sidebar-mount"></div>
+<div class="main">
+  <div class="topbar">
+    <h1>💪 Trainers</h1>
+    <div class="user-info">Welcome, <span id="username-display">Admin</span></div>
+  </div>
+  <div class="content">
+    <div id="alert-main" class="alert"></div>
+    <div class="toolbar">
+      <input class="search-box" id="tr-search" placeholder="🔍 Search trainers..."/>
+      <button class="btn btn-primary" onclick="openModal('tr-modal')">+ Add Trainer</button>
+      <button class="btn btn-secondary" onclick="openModal('assign-modal')">🔗 Assign Workout</button>
+    </div>
+
+    <div class="card">
+      <div class="card-header"><h3>All Trainers</h3><span id="tr-count" style="color:var(--text-muted);font-size:0.85rem"></span></div>
+      <div class="table-wrap">
+        <table id="tr-table">
+          <thead>
+            <tr><th>ID</th><th>Name</th><th>Pay ID</th><th>Mobiles</th><th>Timeslots</th><th>Workouts</th><th>Actions</th></tr>
+          </thead>
+          <tbody><tr><td colspan="7" style="text-align:center;color:var(--text-muted)">Loading...</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Add Trainer Modal -->
+<div class="modal-overlay" id="tr-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="modal-title">Add Trainer</h3>
+      <button class="modal-close" onclick="resetAndClose()">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="edit-id"/>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Trainer ID *</label>
+          <input type="text" id="trainer_id" class="form-control" placeholder="e.g. T6"/>
+        </div>
+        <div class="form-group">
+          <label>Pay ID</label>
+          <input type="text" id="pay_id" class="form-control" placeholder="e.g. P1"/>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>First Name *</label>
+          <input type="text" id="trainer_first_name" class="form-control" placeholder="First name"/>
+        </div>
+        <div class="form-group">
+          <label>Last Name *</label>
+          <input type="text" id="trainer_last_name" class="form-control" placeholder="Last name"/>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Mobiles (comma separated)</label>
+        <input type="text" id="mobile_numbers" class="form-control" placeholder="e.g. 9876543210"/>
+      </div>
+      <div class="form-group">
+        <label>Timeslots (comma separated)</label>
+        <input type="text" id="timeslots" class="form-control" placeholder="e.g. 6AM(2Hours), 6PM(2Hours)"/>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="resetAndClose()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveTrainer()">💾 Save Trainer</button>
+    </div>
+  </div>
+</div>
+
+<!-- Assign Workout Modal -->
+<div class="modal-overlay" id="assign-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>Assign Workout to Trainer</h3>
+      <button class="modal-close" onclick="closeModal('assign-modal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label>Trainer ID *</label>
+        <input type="text" id="a-trainer-id" class="form-control" placeholder="e.g. T1"/>
+      </div>
+      <div class="form-group">
+        <label>Workout ID *</label>
+        <input type="text" id="a-workout-id" class="form-control" placeholder="e.g. W2"/>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('assign-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="assignWorkout()">🔗 Assign</button>
+    </div>
+  </div>
+</div>
+
+<script src="/js/sidebar.js"></script>
+<script src="/js/common.js"></script>
+<script>
+document.getElementById('sidebar-mount').innerHTML = getSidebar('trainers');
+checkAuth();
+filterTable('tr-search', 'tr-table');
+
+async function loadTrainers() {
+  const trainers = await api('/api/trainers');
+  document.getElementById('tr-count').textContent = `${trainers.length} trainers`;
+  const tbody = document.querySelector('#tr-table tbody');
+  if (!trainers.length) {
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text-muted)">No trainers found</td></tr>';
+    return;
+  }
+  tbody.innerHTML = trainers.map(t => `
+    <tr>
+      <td><span class="badge badge-red">${t.trainer_id}</span></td>
+      <td><strong>${t.trainer_first_name} ${t.trainer_last_name}</strong></td>
+      <td>${t.pay_id || '-'}</td>
+      <td style="font-size:0.8rem">${t.mobile_numbers || '-'}</td>
+      <td style="font-size:0.8rem">${t.timeslots || '-'}</td>
+      <td><span class="badge badge-green">${t.workout_count} workouts</span></td>
+      <td>
+        <button class="btn btn-secondary btn-sm" onclick='editTrainer(${JSON.stringify(t)})'>✏️</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteTrainer('${t.trainer_id}')">🗑️</button>
+      </td>
+    </tr>
+  `).join('');
+}
+
+function editTrainer(t) {
+  document.getElementById('modal-title').textContent = 'Edit Trainer';
+  document.getElementById('edit-id').value = t.trainer_id;
+  document.getElementById('trainer_id').value = t.trainer_id;
+  document.getElementById('trainer_id').disabled = true;
+  document.getElementById('pay_id').value = t.pay_id || '';
+  document.getElementById('trainer_first_name').value = t.trainer_first_name;
+  document.getElementById('trainer_last_name').value = t.trainer_last_name;
+  document.getElementById('mobile_numbers').value = t.mobile_numbers || '';
+  document.getElementById('timeslots').value = t.timeslots || '';
+  openModal('tr-modal');
+}
+
+async function saveTrainer() {
+  const editId = document.getElementById('edit-id').value;
+  const body = {
+    trainer_id:         document.getElementById('trainer_id').value.trim(),
+    pay_id:             document.getElementById('pay_id').value.trim(),
+    trainer_first_name: document.getElementById('trainer_first_name').value.trim(),
+    trainer_last_name:  document.getElementById('trainer_last_name').value.trim(),
+    mobile_numbers: document.getElementById('mobile_numbers').value.split(',').map(s=>s.trim()).filter(Boolean),
+    timeslots:      document.getElementById('timeslots').value.split(',').map(s=>s.trim()).filter(Boolean)
+  };
+  if (!body.trainer_id || !body.trainer_first_name) return showAlert('alert-main','ID and Name required','error');
+  const result = editId
+    ? await api(`/api/trainers/${editId}`, 'PUT', body)
+    : await api('/api/trainers', 'POST', body);
+  if (result.success) { showAlert('alert-main', result.message, 'success'); resetAndClose(); loadTrainers(); }
+  else showAlert('alert-main', result.error || 'Error', 'error');
+}
+
+async function deleteTrainer(id) {
+  if (!confirmDelete(`Delete trainer ${id}?`)) return;
+  const r = await api(`/api/trainers/${id}`, 'DELETE');
+  if (r.success) { showAlert('alert-main', r.message, 'success'); loadTrainers(); }
+  else showAlert('alert-main', r.error, 'error');
+}
+
+async function assignWorkout() {
+  const trainer_id = document.getElementById('a-trainer-id').value.trim();
+  const workout_id = document.getElementById('a-workout-id').value.trim();
+  if (!trainer_id || !workout_id) return showAlert('alert-main','Both fields required','error');
+  const r = await api('/api/trainers/assign-workout', 'POST', { trainer_id, workout_id });
+  if (r.success) { showAlert('alert-main', r.message, 'success'); closeModal('assign-modal'); loadTrainers(); }
+  else showAlert('alert-main', r.error, 'error');
+}
+
+function resetAndClose() {
+  ['trainer_id','pay_id','trainer_first_name','trainer_last_name','mobile_numbers','timeslots'].forEach(id=>{
+    document.getElementById(id).value='';
+  });
+  document.getElementById('trainer_id').disabled = false;
+  document.getElementById('edit-id').value = '';
+  document.getElementById('modal-title').textContent = 'Add Trainer';
+  closeModal('tr-modal');
+}
+
+loadTrainers();
+</script>
+</body>
+</html>

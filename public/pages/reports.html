@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Reports - THE CLUSTER</title>
+  <link rel="stylesheet" href="/css/style.css"/>
+</head>
+<body>
+<div id="sidebar-mount"></div>
+<div class="main">
+  <div class="topbar">
+    <h1>📋 Reports (SQL Queries)</h1>
+    <div class="user-info">Welcome, <span id="username-display">Admin</span></div>
+  </div>
+  <div class="content">
+    <div class="tabs">
+      <button class="tab-btn active" data-tab="tab1">Members & Trainers</button>
+      <button class="tab-btn" data-tab="tab2">Gym Revenue</button>
+      <button class="tab-btn" data-tab="tab3">Member Mobiles</button>
+      <button class="tab-btn" data-tab="tab4">Trainer Workouts</button>
+      <button class="tab-btn" data-tab="tab5">Workout Plans</button>
+      <button class="tab-btn" data-tab="tab6">Gym Types & Trainers</button>
+      <button class="tab-btn" data-tab="tab7">Unenrolled</button>
+      <button class="tab-btn" data-tab="tab8">Trainer Timeslots</button>
+    </div>
+
+    <!-- Tab 1 -->
+    <div class="tab-content active" id="tab1">
+      <div class="card">
+        <div class="card-header">
+          <h3>Q1: Member Info with Trainer</h3>
+          <code style="font-size:0.75rem;color:var(--accent)">LEFT JOIN trainer ON member.trainer_id</code>
+        </div>
+        <div class="table-wrap">
+          <table><thead><tr><th>Mem ID</th><th>Member Name</th><th>Trainer ID</th><th>Trainer Name</th></tr></thead>
+          <tbody id="r1"></tbody></table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab 2 -->
+    <div class="tab-content" id="tab2">
+      <div class="card">
+        <div class="card-header">
+          <h3>Q2: Gym Info with Total Amount Paid</h3>
+          <code style="font-size:0.75rem;color:var(--accent)">GROUP BY gym_id, SUM(amount)</code>
+        </div>
+        <div class="table-wrap">
+          <table><thead><tr><th>Gym ID</th><th>Gym Name</th><th>Total Paid</th></tr></thead>
+          <tbody id="r2"></tbody></table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab 3 -->
+    <div class="tab-content" id="tab3">
+      <div class="card">
+        <div class="card-header">
+          <h3>Q3: Member Info with Mobile Numbers</h3>
+          <code style="font-size:0.75rem;color:var(--accent)">LEFT JOIN mem_mobile_no</code>
+        </div>
+        <div class="table-wrap">
+          <table><thead><tr><th>Mem ID</th><th>Name</th><th>Mobile No</th></tr></thead>
+          <tbody id="r3"></tbody></table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab 4 -->
+    <div class="tab-content" id="tab4">
+      <div class="card">
+        <div class="card-header">
+          <h3>Q4: Trainer Info with Workout They Instruct</h3>
+          <code style="font-size:0.75rem;color:var(--accent)">LEFT JOIN instructs → workout</code>
+        </div>
+        <div class="table-wrap">
+          <table><thead><tr><th>Trainer ID</th><th>Trainer Name</th><th>Workout</th></tr></thead>
+          <tbody id="r4"></tbody></table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab 5 -->
+    <div class="tab-content" id="tab5">
+      <div class="card">
+        <div class="card-header">
+          <h3>Q5: Workout Plan for All Members</h3>
+          <code style="font-size:0.75rem;color:var(--accent)">JOIN enrolls_to → workout_plan → workout</code>
+        </div>
+        <div class="table-wrap">
+          <table><thead><tr><th>Mem ID</th><th>Name</th><th>Workout</th><th>Schedule</th></tr></thead>
+          <tbody id="r5"></tbody></table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab 6 -->
+    <div class="tab-content" id="tab6">
+      <div class="card">
+        <div class="card-header">
+          <h3>Q6: Gym Type & Number of Trainers</h3>
+          <code style="font-size:0.75rem;color:var(--accent)">JOIN gym_type + COUNT(trainer)</code>
+        </div>
+        <div class="table-wrap">
+          <table><thead><tr><th>Gym ID</th><th>Gym Name</th><th>Type</th><th>Trainer Count</th></tr></thead>
+          <tbody id="r6"></tbody></table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab 7 -->
+    <div class="tab-content" id="tab7">
+      <div class="card">
+        <div class="card-header">
+          <h3>Q7: Members NOT Enrolled in Any Workout</h3>
+          <code style="font-size:0.75rem;color:var(--accent)">LEFT JOIN enrolls_to WHERE date IS NULL</code>
+        </div>
+        <div class="table-wrap">
+          <table><thead><tr><th>Mem ID</th><th>First Name</th><th>Last Name</th></tr></thead>
+          <tbody id="r7"></tbody></table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab 8 -->
+    <div class="tab-content" id="tab8">
+      <div class="card">
+        <div class="card-header">
+          <h3>Q8: Trainer Info with Assigned Time Slots</h3>
+          <code style="font-size:0.75rem;color:var(--accent)">GROUP_CONCAT(trainer_time.time)</code>
+        </div>
+        <div class="table-wrap">
+          <table><thead><tr><th>Trainer ID</th><th>Trainer Name</th><th>Timeslots</th></tr></thead>
+          <tbody id="r8"></tbody></table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="/js/sidebar.js"></script>
+<script src="/js/common.js"></script>
+<script>
+document.getElementById('sidebar-mount').innerHTML = getSidebar('reports');
+checkAuth();
+initTabs();
+
+function row(cells) { return `<tr>${cells.map(c=>`<td>${c}</td>`).join('')}</tr>`; }
+function empty(cols, msg='No data') { return `<tr><td colspan="${cols}" style="text-align:center;color:var(--text-muted)">${msg}</td></tr>`; }
+
+async function loadAll() {
+  // Q1
+  const r1 = await api('/api/reports/members-trainers');
+  document.getElementById('r1').innerHTML = r1.length
+    ? r1.map(r=>row([
+        `<span class="badge badge-blue">${r.mem_id}</span>`,
+        `${r.mem_first_name} ${r.mem_last_name}`,
+        r.trainer_id||'-',
+        r.trainer_first_name ? `${r.trainer_first_name} ${r.trainer_last_name}` : '-'
+      ])).join('')
+    : empty(4);
+
+  // Q2
+  const r2 = await api('/api/reports/gym-totals');
+  document.getElementById('r2').innerHTML = r2.length
+    ? r2.map(r=>row([
+        `<span class="badge badge-red">${r.gym_id}</span>`,
+        r.gym_name,
+        `<strong style="color:var(--success)">${fmtCurrency(r.total_paid||0)}</strong>`
+      ])).join('')
+    : empty(3);
+
+  // Q3
+  const r3 = await api('/api/reports/members-mobiles');
+  document.getElementById('r3').innerHTML = r3.length
+    ? r3.map(r=>row([
+        `<span class="badge badge-blue">${r.mem_id}</span>`,
+        `${r.mem_first_name} ${r.mem_last_name}`,
+        r.mobile_no||'-'
+      ])).join('')
+    : empty(3);
+
+  // Q4
+  const r4 = await api('/api/reports/trainer-workouts');
+  document.getElementById('r4').innerHTML = r4.length
+    ? r4.map(r=>row([
+        `<span class="badge badge-red">${r.trainer_id}</span>`,
+        `${r.trainer_first_name} ${r.trainer_last_name}`,
+        r.workout_name||'-'
+      ])).join('')
+    : empty(3);
+
+  // Q5
+  const r5 = await api('/api/reports/member-workout-plans');
+  document.getElementById('r5').innerHTML = r5.length
+    ? r5.map(r=>row([
+        `<span class="badge badge-blue">${r.mem_id}</span>`,
+        `${r.mem_first_name} ${r.mem_last_name}`,
+        r.workout_name||'-',
+        r.workout_schedule||'-'
+      ])).join('')
+    : empty(4);
+
+  // Q6
+  const r6 = await api('/api/reports/gym-trainers');
+  document.getElementById('r6').innerHTML = r6.length
+    ? r6.map(r=>row([
+        `<span class="badge badge-red">${r.gym_id}</span>`,
+        r.gym_name,
+        r.gym_types||'-',
+        `<span class="badge badge-green">${r.trainer_count}</span>`
+      ])).join('')
+    : empty(4);
+
+  // Q7
+  const r7 = await api('/api/reports/unenrolled-members');
+  document.getElementById('r7').innerHTML = r7.length
+    ? r7.map(r=>row([
+        `<span class="badge badge-yellow">${r.mem_id}</span>`,
+        r.mem_first_name, r.mem_last_name
+      ])).join('')
+    : empty(3,'✅ All members are enrolled!');
+
+  // Q8
+  const r8 = await api('/api/reports/trainer-timeslots');
+  document.getElementById('r8').innerHTML = r8.length
+    ? r8.map(r=>row([
+        `<span class="badge badge-red">${r.trainer_id}</span>`,
+        `${r.trainer_first_name} ${r.trainer_last_name}`,
+        r.timeslots||'-'
+      ])).join('')
+    : empty(3);
+}
+
+loadAll();
+</script>
+</body>
+</html>

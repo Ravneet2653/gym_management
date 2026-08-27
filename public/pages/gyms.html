@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Gyms - THE CLUSTER</title>
+  <link rel="stylesheet" href="/css/style.css"/>
+</head>
+<body>
+<div id="sidebar-mount"></div>
+
+<div class="main">
+  <div class="topbar">
+    <h1>🏢 Gyms</h1>
+    <div class="user-info">Welcome, <span id="username-display">Admin</span></div>
+  </div>
+
+  <div class="content">
+    <div id="alert-main" class="alert"></div>
+
+    <div class="toolbar">
+      <input class="search-box" id="gym-search" placeholder="🔍 Search gyms..."/>
+      <button class="btn btn-primary" onclick="openModal('gym-modal')">+ Add Gym</button>
+    </div>
+
+    <div class="card">
+      <div class="card-header"><h3>All Gyms</h3><span id="gym-count" style="color:var(--text-muted);font-size:0.85rem"></span></div>
+      <div class="table-wrap">
+        <table id="gym-table">
+          <thead>
+            <tr>
+              <th>Gym ID</th><th>Name</th><th>Street</th><th>Pincode</th>
+              <th>Landmark</th><th>Type</th><th>Actions</th>
+            </tr>
+          </thead>
+          <tbody><tr><td colspan="7" style="text-align:center;color:var(--text-muted)">Loading...</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Add/Edit Modal -->
+<div class="modal-overlay" id="gym-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="modal-title">Add New Gym</h3>
+      <button class="modal-close" onclick="closeModal('gym-modal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="edit-id"/>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Gym ID *</label>
+          <input type="text" id="gym_id" class="form-control" placeholder="e.g. G6"/>
+        </div>
+        <div class="form-group">
+          <label>Gym Name *</label>
+          <input type="text" id="gym_name" class="form-control" placeholder="e.g. FitZone Gym"/>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Street No.</label>
+          <input type="text" id="street_no" class="form-control" placeholder="e.g. 12A"/>
+        </div>
+        <div class="form-group">
+          <label>Street Name</label>
+          <input type="text" id="street_name" class="form-control" placeholder="e.g. MG Road"/>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Pin Code</label>
+          <input type="text" id="pin_code" class="form-control" placeholder="e.g. 147001"/>
+        </div>
+        <div class="form-group">
+          <label>Landmark</label>
+          <input type="text" id="landmark" class="form-control" placeholder="e.g. Near Metro"/>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Gym Type</label>
+        <div class="checkbox-group">
+          <label><input type="checkbox" name="gym_type" value="Men"/> Men</label>
+          <label><input type="checkbox" name="gym_type" value="Women"/> Women</label>
+          <label><input type="checkbox" name="gym_type" value="Unisex"/> Unisex</label>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('gym-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveGym()">💾 Save Gym</button>
+    </div>
+  </div>
+</div>
+
+<script src="/js/sidebar.js"></script>
+<script src="/js/common.js"></script>
+<script>
+document.getElementById('sidebar-mount').innerHTML = getSidebar('gyms');
+checkAuth();
+filterTable('gym-search', 'gym-table');
+
+let gyms = [];
+
+async function loadGyms() {
+  gyms = await api('/api/gyms');
+  document.getElementById('gym-count').textContent = `${gyms.length} gyms`;
+  renderGyms(gyms);
+}
+
+function renderGyms(data) {
+  const tbody = document.querySelector('#gym-table tbody');
+  if (!data.length) {
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text-muted)">No gyms found</td></tr>';
+    return;
+  }
+  tbody.innerHTML = data.map(g => `
+    <tr>
+      <td><span class="badge badge-red">${g.gym_id}</span></td>
+      <td><strong>${g.gym_name}</strong></td>
+      <td>${g.street_no || ''} ${g.street_name || ''}</td>
+      <td>${g.pin_code || '-'}</td>
+      <td>${g.landmark || '-'}</td>
+      <td>${formatTypes(g.types)}</td>
+      <td>
+        <button class="btn btn-secondary btn-sm" onclick='editGym(${JSON.stringify(g)})'>✏️ Edit</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteGym('${g.gym_id}')">🗑️ Del</button>
+      </td>
+    </tr>
+  `).join('');
+}
+
+function formatTypes(types) {
+  if (!types) return '-';
+  return types.split(', ').map(t =>
+    `<span class="badge ${t==='Men'?'badge-blue':t==='Women'?'badge-red':'badge-green'}">${t}</span>`
+  ).join(' ');
+}
+
+function editGym(g) {
+  document.getElementById('modal-title').textContent = 'Edit Gym';
+  document.getElementById('edit-id').value = g.gym_id;
+  document.getElementById('gym_id').value = g.gym_id;
+  document.getElementById('gym_id').disabled = true;
+  document.getElementById('gym_name').value = g.gym_name;
+  document.getElementById('street_no').value = g.street_no || '';
+  document.getElementById('street_name').value = g.street_name || '';
+  document.getElementById('pin_code').value = g.pin_code || '';
+  document.getElementById('landmark').value = g.landmark || '';
+  const types = (g.types || '').split(', ');
+  document.querySelectorAll('[name="gym_type"]').forEach(cb => {
+    cb.checked = types.includes(cb.value);
+  });
+  openModal('gym-modal');
+}
+
+async function saveGym() {
+  const editId = document.getElementById('edit-id').value;
+  const types = [...document.querySelectorAll('[name="gym_type"]:checked')].map(c => c.value);
+  const body = {
+    gym_id:      document.getElementById('gym_id').value.trim(),
+    gym_name:    document.getElementById('gym_name').value.trim(),
+    street_no:   document.getElementById('street_no').value.trim(),
+    street_name: document.getElementById('street_name').value.trim(),
+    pin_code:    document.getElementById('pin_code').value.trim(),
+    landmark:    document.getElementById('landmark').value.trim(),
+    types
+  };
+  if (!body.gym_id || !body.gym_name) return showAlert('alert-main', 'Gym ID and Name are required', 'error');
+
+  let result;
+  if (editId) {
+    result = await api(`/api/gyms/${editId}`, 'PUT', body);
+  } else {
+    result = await api('/api/gyms', 'POST', body);
+  }
+  if (result.success) {
+    showAlert('alert-main', result.message, 'success');
+    closeModal('gym-modal');
+    resetGymForm();
+    loadGyms();
+  } else {
+    showAlert('alert-main', result.error || 'Error saving gym', 'error');
+  }
+}
+
+async function deleteGym(id) {
+  if (!confirmDelete(`Delete gym ${id}?`)) return;
+  const result = await api(`/api/gyms/${id}`, 'DELETE');
+  if (result.success) { showAlert('alert-main', result.message, 'success'); loadGyms(); }
+  else showAlert('alert-main', result.error, 'error');
+}
+
+function resetGymForm() {
+  ['edit-id','gym_id','gym_name','street_no','street_name','pin_code','landmark'].forEach(id => {
+    document.getElementById(id).value = '';
+  });
+  document.getElementById('gym_id').disabled = false;
+  document.querySelectorAll('[name="gym_type"]').forEach(cb => cb.checked = false);
+  document.getElementById('modal-title').textContent = 'Add New Gym';
+}
+
+document.querySelector('.modal-close').addEventListener('click', resetGymForm);
+
+loadGyms();
+</script>
+</body>
+</html>

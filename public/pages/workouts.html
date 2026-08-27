@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Workouts - THE CLUSTER</title>
+  <link rel="stylesheet" href="/css/style.css"/>
+</head>
+<body>
+<div id="sidebar-mount"></div>
+<div class="main">
+  <div class="topbar">
+    <h1>🏃 Workouts</h1>
+    <div class="user-info">Welcome, <span id="username-display">Admin</span></div>
+  </div>
+  <div class="content">
+    <div id="alert-main" class="alert"></div>
+    <div class="toolbar">
+      <input class="search-box" id="w-search" placeholder="🔍 Search workouts..."/>
+      <button class="btn btn-primary" onclick="openModal('w-modal')">+ Add Workout</button>
+      <button class="btn btn-secondary" onclick="openModal('enroll-modal')">📝 Enroll Member</button>
+    </div>
+
+    <div class="card">
+      <div class="card-header"><h3>All Workouts</h3></div>
+      <div class="table-wrap">
+        <table id="w-table">
+          <thead><tr><th>ID</th><th>Name</th><th>Description</th><th>Schedule</th><th>Duration (Months)</th><th>Actions</th></tr></thead>
+          <tbody><tr><td colspan="6" style="text-align:center;color:var(--text-muted)">Loading...</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Add/Edit Workout Modal -->
+<div class="modal-overlay" id="w-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="modal-title">Add Workout</h3>
+      <button class="modal-close" onclick="resetAndClose()">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="edit-id"/>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Workout ID *</label>
+          <input type="text" id="workout_id" class="form-control" placeholder="e.g. W5"/>
+        </div>
+        <div class="form-group">
+          <label>Workout Name *</label>
+          <input type="text" id="workout_name" class="form-control" placeholder="e.g. Deadlift"/>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Description</label>
+        <textarea id="description" class="form-control" rows="3" placeholder="Describe the workout..."></textarea>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Schedule</label>
+          <input type="text" id="workout_schedule" class="form-control" placeholder="e.g. 3 sets of 10"/>
+        </div>
+        <div class="form-group">
+          <label>Duration (Months)</label>
+          <input type="number" id="workout_repetition" class="form-control" placeholder="e.g. 2" step="0.5"/>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="resetAndClose()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveWorkout()">💾 Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Enroll Modal -->
+<div class="modal-overlay" id="enroll-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>Enroll Member in Workout</h3>
+      <button class="modal-close" onclick="closeModal('enroll-modal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label>Member ID *</label>
+        <input type="text" id="e-mem-id" class="form-control" placeholder="e.g. M1"/>
+      </div>
+      <div class="form-group">
+        <label>Workout ID *</label>
+        <input type="text" id="e-workout-id" class="form-control" placeholder="e.g. W1"/>
+      </div>
+      <div class="form-group">
+        <label>Date *</label>
+        <input type="date" id="e-date" class="form-control"/>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('enroll-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="enrollMember()">📝 Enroll</button>
+    </div>
+  </div>
+</div>
+
+<script src="/js/sidebar.js"></script>
+<script src="/js/common.js"></script>
+<script>
+document.getElementById('sidebar-mount').innerHTML = getSidebar('workouts');
+checkAuth();
+filterTable('w-search', 'w-table');
+// Set today as default date for enroll
+document.getElementById('e-date').value = new Date().toISOString().substring(0,10);
+
+async function loadWorkouts() {
+  const workouts = await api('/api/workouts');
+  const tbody = document.querySelector('#w-table tbody');
+  tbody.innerHTML = workouts.length
+    ? workouts.map(w => `
+      <tr>
+        <td><span class="badge badge-green">${w.workout_id}</span></td>
+        <td><strong>${w.workout_name}</strong></td>
+        <td style="max-width:250px;font-size:0.82rem;color:var(--text-muted)">${w.description || '-'}</td>
+        <td>${w.workout_schedule || '-'}</td>
+        <td>${w.workout_repetition || '-'}</td>
+        <td>
+          <button class="btn btn-secondary btn-sm" onclick='editWorkout(${JSON.stringify(w)})'>✏️</button>
+          <button class="btn btn-danger btn-sm" onclick="deleteWorkout('${w.workout_id}')">🗑️</button>
+        </td>
+      </tr>`).join('')
+    : '<tr><td colspan="6" style="text-align:center;color:var(--text-muted)">No workouts found</td></tr>';
+}
+
+function editWorkout(w) {
+  document.getElementById('modal-title').textContent = 'Edit Workout';
+  document.getElementById('edit-id').value = w.workout_id;
+  document.getElementById('workout_id').value = w.workout_id;
+  document.getElementById('workout_id').disabled = true;
+  document.getElementById('workout_name').value = w.workout_name;
+  document.getElementById('description').value = w.description || '';
+  document.getElementById('workout_schedule').value = w.workout_schedule || '';
+  document.getElementById('workout_repetition').value = w.workout_repetition || '';
+  openModal('w-modal');
+}
+
+async function saveWorkout() {
+  const editId = document.getElementById('edit-id').value;
+  const body = {
+    workout_id:         document.getElementById('workout_id').value.trim(),
+    workout_name:       document.getElementById('workout_name').value.trim(),
+    description:        document.getElementById('description').value.trim(),
+    workout_schedule:   document.getElementById('workout_schedule').value.trim(),
+    workout_repetition: document.getElementById('workout_repetition').value
+  };
+  if (!body.workout_id || !body.workout_name) return showAlert('alert-main','ID and Name required','error');
+  const r = editId
+    ? await api(`/api/workouts/${editId}`, 'PUT', body)
+    : await api('/api/workouts', 'POST', body);
+  if (r.success) { showAlert('alert-main', r.message, 'success'); resetAndClose(); loadWorkouts(); }
+  else showAlert('alert-main', r.error || 'Error', 'error');
+}
+
+async function deleteWorkout(id) {
+  if (!confirmDelete(`Delete workout ${id}?`)) return;
+  const r = await api(`/api/workouts/${id}`, 'DELETE');
+  if (r.success) { showAlert('alert-main', r.message, 'success'); loadWorkouts(); }
+  else showAlert('alert-main', r.error, 'error');
+}
+
+async function enrollMember() {
+  const mem_id    = document.getElementById('e-mem-id').value.trim();
+  const workout_id = document.getElementById('e-workout-id').value.trim();
+  const date      = document.getElementById('e-date').value;
+  if (!mem_id || !workout_id || !date) return showAlert('alert-main','All fields required','error');
+  const r = await api('/api/workouts/enroll', 'POST', { mem_id, workout_id, date });
+  if (r.success) { showAlert('alert-main', r.message, 'success'); closeModal('enroll-modal'); }
+  else showAlert('alert-main', r.error, 'error');
+}
+
+function resetAndClose() {
+  ['workout_id','workout_name','description','workout_schedule','workout_repetition'].forEach(id=>{
+    document.getElementById(id).value='';
+  });
+  document.getElementById('workout_id').disabled = false;
+  document.getElementById('edit-id').value = '';
+  document.getElementById('modal-title').textContent = 'Add Workout';
+  closeModal('w-modal');
+}
+
+loadWorkouts();
+</script>
+</body>
+</html>
