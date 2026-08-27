@@ -114,16 +114,5 @@ Open browser: **http://localhost:3000**
 - **Functions**: get_member_age, get_member_workouts, get_trainer_workouts
 - **Triggers**: after_trainer_insert (auto time), after_trainer_delete (cascade), after_member_delete, after_workout_delete, after_payment_delete, after_gym_delete
 
----
-
-## 👥 Team
-
-| Name | Roll No |
-|------|---------|
-| Alisha | 102203037 |
-| Divrose Kaur | 102203040 |
-| Sonam Dhaliwal | 102203041 |
-| Himanshu Bhumbla | 102203043 |
-
-**Submitted To:** Dr. Rajendra Kumar Roul  
+ 
 **Thapar Institute of Engineering and Technology, Patiala**
